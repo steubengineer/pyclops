@@ -1,21 +1,21 @@
-import numpy as np
+import io
+import os
 import time
 from datetime import datetime
-import os
-import io
-import PySimpleGUI as sg
-from PIL import Image
 
+import PySimpleGUI as sg
 import mss
 import mss.tools
+import numpy as np
+from PIL import Image
 
-#messy global state stuff
+# messy global state stuff
 displaySize = 1920
 monitorNumber = 1
 homeDir = os.path.expanduser('~')
 idstring = (datetime.now()).strftime("%Y_%m_%d_%H%M")
 
-#screengrabber instance
+# screengrabber instance
 sct = mss.mss()
 sct.compression_level = 0
 
@@ -24,7 +24,7 @@ toggle_btn_on = b'iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAYAAACM/rhtAAAABmJLR0QA/wD/AP
 
 
 def validInt(text):
-    if len(text)==1 and text in '+-':
+    if len(text) == 1 and text in '+-':
         return True
     else:
         try:
@@ -35,7 +35,7 @@ def validInt(text):
 
 
 def validFloat(text):
-    if len(text)==1 and text in '+-':
+    if len(text) == 1 and text in '+-':
         return True
     else:
         try:
@@ -44,16 +44,18 @@ def validFloat(text):
         except:
             return False
 
-def arraysEqual(a,b):
-    #print(a.shape,' ',b.shape,' ',a.shape==b.shape)
-    if a.shape == b.shape :
-        if np.sum( a - b ) < 1.:
+
+def arraysEqual(a, b):
+    # print(a.shape,' ',b.shape,' ',a.shape==b.shape)
+    if a.shape == b.shape:
+        if np.sum(a - b) < 1.:
             return True
-            #print("equal")
+            # print("equal")
         else:
             return False
     else:
         return False
+
 
 def millis():
     return round(time.time() * 1000)
@@ -61,6 +63,7 @@ def millis():
 
 def convert_from_bytes(im):
     return Image.frombytes('RGB', im.size, im.bgra, 'raw', 'BGRX')
+
 
 def main():
     # setup initial state
@@ -96,66 +99,66 @@ def main():
             sg.Text('top', auto_size_text=False, size=3),
             sg.In(key='-Y0-', size=(10, 1), default_text=y0, enable_events=True),
             sg.Text('height', auto_size_text=False, size=5),
-            sg.In(key='-H-', size=(10, 1),default_text=h, enable_events=True)
+            sg.In(key='-H-', size=(10, 1), default_text=h, enable_events=True)
         ],
         [
             sg.HorizontalSeparator()
         ],
         [
             sg.Text('recording interval (ms)', auto_size_text=False, size=18),
-            sg.In(key='-dT-',size=(14,1), default_text=recInterval, enable_events=True)
+            sg.In(key='-dT-', size=(14, 1), default_text=recInterval, enable_events=True)
         ],
         [
             sg.Text('output file directory', auto_size_text=False, size=(18, 1)),
             sg.Input(key='-DIR-', enable_events=True, visible=False),
-            sg.FolderBrowse(target='-DIR-', size=(12,1), button_color='gray', initial_folder=homeDir)
+            sg.FolderBrowse(target='-DIR-', size=(12, 1), button_color='gray', initial_folder=homeDir)
         ],
         [
             sg.HorizontalSeparator()
         ],
         [
-            sg.Text('save deltas', size=(10,1)),
+            sg.Text('save deltas', size=(10, 1)),
             sg.Button(
-                image_data=toggle_btn_off, key='-DELTA-', size=(12,1),
+                image_data=toggle_btn_off, key='-DELTA-', size=(12, 1),
                 button_color=(sg.theme_background_color(), sg.theme_background_color()), border_width=0,
                 metadata=False
             ),
-            sg.Button('start',key='-START-', size=(4, 1),button_color='green'),
-            sg.Button('stop',key='-STOP-', size=(4, 1),button_color='red')
+            sg.Button('start', key='-START-', size=(4, 1), button_color='green'),
+            sg.Button('stop', key='-STOP-', size=(4, 1), button_color='red')
         ],
         [
             sg.Image(key="-IMAGE-", background_color='black')
         ],
         [
-            sg.Text('ready...',key='-STATUS-', size=(56,1))
+            sg.Text('ready...', key='-STATUS-', size=(56, 1))
         ]
     ]
 
-    #create window
+    # create window
     window = sg.Window("Pyclops Screencapture", layout)
     capture = sct.grab({'left': x0, 'top': y0, 'width': w, 'height': h})
     oldcap = capture
 
     # enter the sole event loop
     while True:
-        #check for user events
+        # check for user events
         event, values = window.read(timeout=1)
         updateBounds = False
         if event == "Exit" or event == sg.WIN_CLOSED:
             break
         elif event == '-START-':
-            #reset zero-time to when user clicks start
+            # reset zero-time to when user clicks start
             idstring = (datetime.now()).strftime("%Y_%m_%d_%H%M")
             start = millis()
             now = start
             then = start
 
-            #update state
+            # update state
             window['-STATUS-'].update('recording started')
             recording = True
 
-            #minimize cap window?
-            #window.minimize()
+            # minimize cap window?
+            # window.minimize()
 
         elif event == '-STOP-':
             window['-STATUS-'].update('recording stopped')
@@ -221,26 +224,26 @@ def main():
 
         now = millis()
 
-        #grab capture
+        # grab capture
         capture = sct.grab({'left': x0, 'top': y0, 'width': w, 'height': h})
 
-        #decide to save or not - keep track of time and the diff to check future capture changes against
+        # decide to save or not - keep track of time and the diff to check future capture changes against
         save = False
         if recording and ((now - then) > recInterval):
-            if recordDeltas and not arraysEqual( np.array(capture), np.array(oldcap)):
+            if recordDeltas and not arraysEqual(np.array(capture), np.array(oldcap)):
                 oldcap = capture
                 save = True
             elif not recordDeltas:
                 save = True
             then = now
-        #save file if necessary
+        # save file if necessary
         if save:
             window['-STATUS-'].update('captured screen at t = ' + str(now - start) + 'ms')
-            fname = os.path.join(exportDir, idstring+"_"+str(now-start)+'.png')
+            fname = os.path.join(exportDir, idstring + "_" + str(now - start) + '.png')
             print(fname)
             mss.tools.to_png(capture.rgb, capture.size, output=fname)
 
-        #update preview graphic
+        # update preview graphic
         capimage = convert_from_bytes(capture)
         dispImage = capimage.copy()
         dispImage.thumbnail((displaySize, displaySize), resample=Image.Resampling.BICUBIC)
@@ -249,5 +252,6 @@ def main():
         window["-IMAGE-"].update(data=dispBytes.getvalue())
 
     window.close()
+
 
 main()
