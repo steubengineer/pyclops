@@ -9,7 +9,6 @@ import mss.tools
 from PIL import Image, ImageChops
 
 # messy global state stuff
-displaySize = 400
 monitorNumber = 1
 homeDir = os.path.expanduser('~')
 idstring = (datetime.now()).strftime("%Y_%m_%d_%H%M")
@@ -79,7 +78,8 @@ def main():
     y0 = mon['top']
     w = mon['width']
     h = mon['height']
-
+    displaySize = (400, 440)
+    print(displaySize)
     exportDir = homeDir
 
     sg.theme("DarkBlue2")
@@ -97,7 +97,7 @@ def main():
             sg.In(key='-H-', size=(10, 1), default_text=h, enable_events=True)
         ],
         [
-            sg.HorizontalSeparator()
+            sg.HorizontalSeparator(color='gray')
         ],
         [
             sg.Text('recording interval (ms)', auto_size_text=False, size=18),
@@ -109,7 +109,7 @@ def main():
             sg.FolderBrowse(target='-DIR-', size=(12, 1), button_color='gray', initial_folder=homeDir)
         ],
         [
-            sg.HorizontalSeparator()
+            sg.HorizontalSeparator(color='gray')
         ],
         [
             sg.Text('save deltas', size=(10, 1)),
@@ -122,15 +122,19 @@ def main():
             sg.Button('stop', key='-STOP-', size=(4, 1), button_color='red')
         ],
         [
-            sg.Image(key="-IMAGE-", background_color='black')
+            sg.Image(key="-IMAGE-", background_color=sg.theme_background_color(), expand_x=True, expand_y=True)
         ],
         [
-            sg.Text('ready...', key='-STATUS-', size=(56, 1))
+            sg.Text('ready...', key='-STATUS-', expand_x=True, auto_size_text=True)
         ]
     ]
 
     # create window
-    window = sg.Window("Pyclops Screencapture", layout)
+    # TODO: find a better way to calculate the initial window size tuple
+    window = sg.Window("Pyclops Screencapture", layout, resizable=True, finalize=True, size=(400,440))
+    window.bind('<Configure>', '-CONFIG-')
+
+    # initialize captures
     capture = sct.grab({'left': x0, 'top': y0, 'width': w, 'height': h})
     capimage = convert_from_bytes(capture)
     oldcapimg = capimage
@@ -159,6 +163,9 @@ def main():
         elif event == '-STOP-':
             window['-STATUS-'].update('recording stopped')
             recording = False
+
+        elif event == '-CONFIG-':
+            displaySize = window['-IMAGE-'].get_size()
 
         elif event == '-DELTA-':
             recordDeltas = not recordDeltas
@@ -243,7 +250,7 @@ def main():
 
         # update preview graphic
         dispImage = capimage.copy()
-        dispImage.thumbnail((displaySize, displaySize), resample=Image.Resampling.BICUBIC)
+        dispImage.thumbnail(displaySize, resample=Image.Resampling.BICUBIC)
         dispBytes = io.BytesIO()
         dispImage.save(dispBytes, format="PNG", compress_level=0)
         window["-IMAGE-"].update(data=dispBytes.getvalue())
