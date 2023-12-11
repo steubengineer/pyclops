@@ -6,8 +6,7 @@ from datetime import datetime
 import PySimpleGUI as sg
 import mss
 import mss.tools
-import numpy as np
-from PIL import Image
+from PIL import Image, ImageChops
 
 # messy global state stuff
 displaySize = 400
@@ -46,16 +45,11 @@ def validFloat(text):
             return False
 
 
-def arraysEqual(a, b):
-    # print(a.shape,' ',b.shape,' ',a.shape==b.shape)
-    if a.shape == b.shape:
-        if np.sum(a - b) < 1.:
-            return True
-            # print("equal")
-        else:
-            return False
-    else:
+def imagesEqual(imga,imgb):
+    if len(set(ImageChops.difference(imga, imgb).getdata())) > 1:
         return False
+    else:
+        return True
 
 
 def millis():
@@ -138,7 +132,8 @@ def main():
     # create window
     window = sg.Window("Pyclops Screencapture", layout)
     capture = sct.grab({'left': x0, 'top': y0, 'width': w, 'height': h})
-    oldcap = capture
+    capimage = convert_from_bytes(capture)
+    oldcapimg = capimage
 
     # enter the sole event loop
     while True:
@@ -227,16 +222,18 @@ def main():
 
         # grab capture
         capture = sct.grab({'left': x0, 'top': y0, 'width': w, 'height': h})
+        capimage = convert_from_bytes(capture)
 
         # decide to save or not - keep track of time and the diff to check future capture changes against
         save = False
         if recording and ((now - then) > recInterval):
-            if recordDeltas and not arraysEqual(np.array(capture), np.array(oldcap)):
-                oldcap = capture
+            if recordDeltas and not imagesEqual(capimage, oldcapimg):
+                oldcapimg = capimage
                 save = True
             elif not recordDeltas:
                 save = True
             then = now
+
         # save file if necessary
         if save:
             window['-STATUS-'].update('captured screen at t = ' + str(now - start) + 'ms')
@@ -245,7 +242,6 @@ def main():
             mss.tools.to_png(capture.rgb, capture.size, output=fname)
 
         # update preview graphic
-        capimage = convert_from_bytes(capture)
         dispImage = capimage.copy()
         dispImage.thumbnail((displaySize, displaySize), resample=Image.Resampling.BICUBIC)
         dispBytes = io.BytesIO()
