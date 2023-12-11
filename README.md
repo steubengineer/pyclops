@@ -9,3 +9,9 @@ Install the required python utilities,
 
 clone this library, and run in your Python interpeter of choice.
 
+## Usage
+Run the python script. Use the GUI to set up the desired capture area/interval. Click the start button to initiate the capture process. 
+
+![Droste effect](https://github.com/steubengineer/pyclops/blob/main/example.png)
+
+Screen capture files will be saved to the user home directory, or the user-specified directory. Saved filenames will have the format YYYY_MM_DD_HHMM_ms.png. The year, month, day, hour, and minute correspond to the time at which the user clicked 'start.' The ms suffix denotes the number of milliseconds elapsed since the start time at which the corresponding capture was taken. 
